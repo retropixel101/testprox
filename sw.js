@@ -8,7 +8,7 @@ if (navigator.userAgent.includes("Firefox")) {
 // blocklist by s16 and swium - blocklist by s16 and swium - blocklist by s16 and swium - blocklist by s16 and swium - blocklist by s16 and swium
 // IMPORTANT: MAKE SURE TO REROUTE THIS TO YOUR REAL FILE
 // YOU MUST DO THIS OR SCRAMJET WILL NOT WORK
-importScripts("/scram/scramjet.all.js");
+importScripts("/scramjet.all.js");
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();

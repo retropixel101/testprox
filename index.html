@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sail - Scramjet</title>
     <!-- MAKE SURE TO REROUTE THESE PATHS TO YOUR REAL FILES -->
-    <script src="/sail/baremux/index.js"></script>
-    <script src="/sail/scram/scramjet.all.js"></script>
+    <script src="/baremux/index.js"></script>
+    <script src="/scram/scramjet.all.js"></script>
     <script>
         // MAKE SURE THIS MATCHES THE PATH TO YOUR REAL SW
         // IMPORTANT: EDIT SW.JS TO POINT TO THE PATH OF YOUR REAL SCRAMJET FILES
@@ -29,10 +29,10 @@
     <iframe src="" frameborder="0" id="frame"></iframe>
 
     <script>
-        const connection = new BareMux.BareMuxConnection("/sail/baremux/worker.js")
+        const connection = new BareMux.BareMuxConnection(" baremux/worker.js")
         // IMPORTANT: YOU MUST CHANGE YOUR WISP SERVER IN PRODUCTION. ONLY USE THIS FOR TESTING.
         // MAKE SURE YOU REROUTE TO YOUR REAL FILES!
-        connection.setTransport("/sail/libcurl/index.mjs", [{ websocket: "wss://wisp.mercurywork.shop/" }])
+        connection.setTransport("/libcurl/index.mjs", [{ websocket: "wss://wisp.mercurywork.shop/" }])
 
         const frame = document.getElementById("frame")
         const bar = document.getElementById("bar")
@@ -41,9 +41,9 @@
         const scramjet = new ScramjetController({
             // MAKE SURE TO REROUTE THESE TO YOUR REAL FILES!
             files: {
-                all: "/sail/scram/scramjet.all.js",
-                wasm: "/sail/scram/scramjet.wasm.wasm",
-                sync: "/sail/scram/scramjet.sync.js"
+                all: "/scram/scramjet.all.js",
+                wasm: "/scram/scramjet.wasm.wasm",
+                sync: "/scram/scramjet.sync.js"
             },
             prefix: "/sail/go/" // You can change your prefix if you want, it doesn't matter what it is.
         })
