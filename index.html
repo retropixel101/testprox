@@ -63,6 +63,10 @@
                     "[Testprox] Service worker registered:",
                     registration.scope
                 );
+            await connection.setTransport(
+                "/testprox/libcurl/index.mjs",
+                [{ websocket: "wss://wisp-backend-weyl.onrender.com/" }]
+            );
 
                 /*
                  * Load Scramjet controller.
