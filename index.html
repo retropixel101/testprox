@@ -38,7 +38,7 @@
 
             await connection.setTransport(
                 "/testprox/libcurl/index.mjs",
-                [{ websocket: "wss://wisp-backend-weyl.onrender.com" }]
+                [{ websocket: "wss://wisp-backend-weyl.onrender.com/" }]
             );
 
             const { ScramjetController } = $scramjetLoadController();
