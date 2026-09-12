@@ -32,7 +32,7 @@
         const connection = new BareMux.BareMuxConnection("/testprox/baremux/worker.js")
         // IMPORTANT: YOU MUST CHANGE YOUR WISP SERVER IN PRODUCTION. ONLY USE THIS FOR TESTING.
         // MAKE SURE YOU REROUTE TO YOUR REAL FILES!
-        connection.setTransport("/testprox/libcurl/index.mjs", [{ websocket: "wss://wisp.mercurywork.shop/" }])
+        connection.setTransport("/testprox/libcurl/index.mjs", [{ websocket: "wss://wisp-backend-weyl.onrender.com" }])
 
         const frame = document.getElementById("frame")
         const bar = document.getElementById("bar")
@@ -45,7 +45,7 @@
                 wasm: "/testprox/scram/scramjet.wasm.wasm",
                 sync: "/testprox/scram/scramjet.sync.js"
             },
-            prefix: "/sail/go/" // You can change your prefix if you want, it doesn't matter what it is.
+            prefix: "/testprox/go/" // You can change your prefix if you want, it doesn't matter what it is.
         })
         scramjet.init()
 
