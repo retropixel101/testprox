@@ -1,18 +1,20 @@
 /* public/app.js */
 const WISP_URL = "wss://wisp-backend-weyl.onrender.com";
 
-const EPOXY_MODULE = "/testprox/epoxy/index.mjs";
-const LIBCURL_MODULE = "/testprox/libcurl/index.mjs";
-const BAREMUX_WORKER = "/testprox/baremux/worker.js";
+const BASE = "/testprox";
+const EPOXY_MODULE = BASE + "/epoxy/index.mjs";
+const LIBCURL_MODULE = BASE + "/libcurl/indexmjs.mjs";
+const BAREMUX_WORKER = BASE + "/baremux/worker.js";
+const SW_URL = BASE + "/sw.js";
 
 const { ScramjetController } = $scramjetLoadController();
 
 const scramjet = new ScramjetController({
-  prefix: "/testprox/scramjet/",
+  prefix: BASE + "/scramjet/",
   files: {
-    wasm: "/testprox/scramjet/scramjet.wasm.wasm",
-    all: "/testprox/scramjet/scramjet.all.js",
-    sync: "/testprox/scramjet/scramjet.sync.js",
+    wasm: BASE + "/scramjet/scramjet.wasm.wasm",
+    all: BASE + "/scramjet/scramjet.all.js",
+    sync: BASE + "/scramjet/scramjet.sync.js",
   },
   flags: {
     captureErrors: true,
@@ -30,7 +32,26 @@ function normalizeUrl(raw) {
   return "https://" + trimmed;
 }
 
-async function setTransport(connection) {
+function setStatus(t, bad = false) {
+  const el = document.getElementById("status");
+  if (!el) return;
+  el.textContent = t;
+  el.style.color = bad ? "#ff6b6b" : "#9aa";
+}
+
+async function resetScramjetDB() {
+  await new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase("$scramjet");
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => {
+      console.warn("$scramjet delete blocked; close other tabs on this origin");
+    };
+  });
+}
+
+async function setTransport() {
+  const connection = new BareMux.BareMuxConnection(BAREMUX_WORKER);
   try {
     await connection.setTransport(EPOXY_MODULE, [{ wisp: WISP_URL }]);
     console.log("[proxy] transport = epoxy", WISP_URL);
@@ -42,27 +63,30 @@ async function setTransport(connection) {
 }
 
 async function init() {
-  const status = document.getElementById("status");
-  const setStatus = (t, bad = false) => {
-    status.textContent = t;
-    status.style.color = bad ? "#ff6b6b" : "#9aa";
-  };
-
   if (!("serviceWorker" in navigator)) {
     setStatus("No service worker support", true);
     throw new Error("serviceWorker missing");
   }
 
+  // 1. Drop any empty $scramjet DB a previous SW created.
+  setStatus("Resetting Scramjet DB…");
+  try {
+    await resetScramjetDB();
+  } catch (err) {
+    console.warn("could not delete $scramjet", err);
+  }
+
+  // 2. Create stores BEFORE the SW can open the DB.
+  setStatus("Starting Scramjet…");
+  await scramjet.init();
+
+  // 3. Now it is safe to start the worker.
   setStatus("Registering service worker…");
-  await navigator.serviceWorker.register("/testprox/sw.js")
+  await navigator.serviceWorker.register(SW_URL, { scope: BASE + "/" });
   await navigator.serviceWorker.ready;
 
   setStatus("Connecting transport…");
-  const connection = new BareMux.BareMuxConnection(BAREMUX_WORKER);
-  await setTransport(connection);
-
-  setStatus("Starting Scramjet…");
-  await scramjet.init();
+  await setTransport();
 
   const mount = document.getElementById("frame");
   frame = scramjet.createFrame();
@@ -83,7 +107,6 @@ async function init() {
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") go();
   });
-
   document.getElementById("back").addEventListener("click", () => frame.back?.());
   document.getElementById("fwd").addEventListener("click", () => frame.forward?.());
   document.getElementById("reload").addEventListener("click", () => frame.reload?.());
@@ -94,9 +117,5 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
-  const status = document.getElementById("status");
-  if (status) {
-    status.textContent = err.message || String(err);
-    status.style.color = "#ff6b6b";
-  }
+  setStatus(err.message || String(err), true);
 });

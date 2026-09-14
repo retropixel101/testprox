@@ -1,4 +1,4 @@
-importScripts("/testprox/scramjet/scramjet.all.js"); // or /testprox/scram/... if that is your real path
+importScripts("/testprox/scramjet/scramjet.all.js");
 
 const { ScramjetServiceWorker } = $scramjetLoadWorker();
 const scramjet = new ScramjetServiceWorker();
@@ -23,4 +23,6 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
