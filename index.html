@@ -3,169 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scramjet Proxy</title>
+  <title>Scramjet</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: #0f0f0f;
-      color: #eee;
+    html, body { height: 100%; background: #121212; color: #eee; font-family: system-ui, sans-serif; }
+    .wrap { display: flex; flex-direction: column; height: 100%; }
+    .bar {
+      display: flex; gap: 8px; align-items: center;
+      padding: 10px 12px; background: #1e1e1e; border-bottom: 1px solid #333;
     }
-    header {
-      padding: 12px 16px;
-      background: #1a1a1a;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      border-bottom: 1px solid #333;
+    .bar button {
+      background: #333; color: #fff; border: 0; border-radius: 6px;
+      padding: 8px 12px; cursor: pointer;
     }
-    #url {
-      flex: 1;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      background: #111;
-      color: #fff;
-      font-size: 15px;
+    .bar button:hover { background: #444; }
+    .bar input {
+      flex: 1; background: #121212; color: #fff; border: 1px solid #333;
+      border-radius: 6px; padding: 8px 10px;
     }
-    button {
-      padding: 10px 18px;
-      border-radius: 8px;
-      border: none;
-      background: #3b82f6;
-      color: white;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    button:hover { background: #2563eb; }
-    #frame-container { flex: 1; position: relative; }
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #fff;
-    }
-    #status {
-      font-size: 13px;
-      color: #888;
-      padding: 0 8px;
-      white-space: nowrap;
-    }
+    #status { font-size: 12px; color: #9aa; white-space: nowrap; }
+    #frame { flex: 1; min-height: 0; background: #fff; }
+    #frame iframe { width: 100%; height: 100%; border: 0; }
   </style>
 </head>
 <body>
-  <header>
-    <input id="url" type="text" placeholder="https://example.com or search term" value="https://example.com" />
-    <button id="go">Go</button>
-    <span id="status">Loading assets…</span>
-  </header>
-  <div id="frame-container"></div>
+  <div class="wrap">
+    <div class="bar">
+      <button id="back" type="button">Back</button>
+      <button id="fwd" type="button">Fwd</button>
+      <button id="reload" type="button">Reload</button>
+      <input id="url" type="text" value="https://example.com" spellcheck="false" />
+      <button id="go" type="button">Go</button>
+      <span id="status">Loading…</span>
+    </div>
+    <div id="frame"></div>
+  </div>
 
-  <!-- 1. BareMux (creates global BareMux) -->
+  <!-- ORDER MATTERS. Classic scripts only. Do not add type="module". -->
   <script src="/testprox/baremux/index.js"></script>
-
-  <!-- 2. Scramjet -->
   <script src="/testprox/scramjet/scramjet.all.js"></script>
-
-  <script>
-    const WISP_URL = "wss://wisp-backend-weyl.onrender.com";
-
-    const statusEl   = document.getElementById("status");
-    const urlInput   = document.getElementById("url");
-    const goBtn      = document.getElementById("go");
-    const container  = document.getElementById("frame-container");
-
-    let scramjet;
-    let connection;
-    let frame;
-
-    async function init() {
-      try {
-        // Make sure BareMux actually loaded
-        if (typeof BareMux === "undefined") {
-          throw new Error("BareMux is not defined – check /testprox/baremux/index.js");
-        }
-
-        // 1. Register service worker
-        if (!("serviceWorker" in navigator)) {
-          throw new Error("Service Workers not supported in this browser");
-        }
-
-        await navigator.serviceWorker.register("/testprox/sw.js", {
-          scope: "/testprox/"
-        });
-        await navigator.serviceWorker.ready;
-        statusEl.textContent = "SW ready";
-
-        // 2. BareMux connection
-        connection = new BareMux.BareMuxConnection("/testprox/baremux/worker.js");
-
-        // 3. Set Epoxy transport → your Wisp server
-        await connection.setTransport("/testprox/epoxy/index.mjs", [
-          { wisp: WISP_URL }
-        ]);
-        statusEl.textContent = "Transport ready (Epoxy + Wisp)";
-
-        // 4. Scramjet controller
-        if (typeof $scramjetLoadController !== "function") {
-          throw new Error("$scramjetLoadController is not defined – check scramjet.all.js");
-        }
-
-        const { ScramjetController } = $scramjetLoadController();
-        scramjet = new ScramjetController({
-          files: {
-            wasm: "/testprox/scramjet/scramjet.wasm.wasm",
-            all:  "/testprox/scramjet/scramjet.all.js",
-            sync: "/testprox/scramjet/scramjet.sync.js"
-          }
-        });
-        await scramjet.init();
-        statusEl.textContent = "Scramjet ready – type a URL and press Go";
-
-        // 5. Create the frame once
-        frame = scramjet.createFrame();
-        frame.frame.style.width  = "100%";
-        frame.frame.style.height = "100%";
-        frame.frame.style.border = "none";
-        container.appendChild(frame.frame);
-
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Init error: " + err.message;
-      }
-    }
-
-    function navigate() {
-      let raw = urlInput.value.trim();
-      if (!raw) return;
-
-      // simple search fallback
-      if (!/^https?:\/\//i.test(raw) && !raw.includes(".")) {
-        raw = "https://duckduckgo.com/?q=" + encodeURIComponent(raw);
-      } else if (!/^https?:\/\//i.test(raw)) {
-        raw = "https://" + raw;
-      }
-
-      if (frame) {
-        frame.go(raw);
-        statusEl.textContent = "Loading " + raw;
-      }
-    }
-
-    goBtn.addEventListener("click", navigate);
-    urlInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") navigate();
-    });
-
-    // Start after the page (and the two scripts above) have loaded
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", init);
-    } else {
-      init();
-    }
-  </script>
+  <script src="/testprox/app.js"></script>
 </body>
 </html>
