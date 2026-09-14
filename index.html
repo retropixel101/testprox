@@ -25,8 +25,8 @@
   <div id="frame-container"></div>
 
   <!-- Load order matters: BareMux → transport → Scramjet -->
-  <script src="/baremux/index.js"></script> <!-- or the main BareMux browser build your package provides -->
-  <script src="/scramjet/scramjet.all.js"></script>
+  <script src="/testprox/baremux/index.js"></script> <!-- or the main BareMux browser build your package provides -->
+  <script src="/testprox/scramjet/scramjet.all.js"></script>
 
   <script>
     const WISP_URL = "wss://wisp-backend-weyl.onrender.com"; // your server (trailing slash sometimes required)
@@ -46,15 +46,15 @@
         if (!("serviceWorker" in navigator)) {
           throw new Error("Service Workers not supported");
         }
-        await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+        await navigator.serviceWorker.register("/testprox/sw.js", { scope: "/" });
         await navigator.serviceWorker.ready;
         statusEl.textContent = "SW ready";
 
         // 2. BareMux connection
-        connection = new BareMux.BareMuxConnection("/baremux/worker.js");
+        connection = new BareMux.BareMuxConnection("/testprox/baremux/worker.js");
 
         // 3. Set Epoxy transport → your Wisp server
-        await connection.setTransport("/epoxy/index.mjs", [
+        await connection.setTransport("/testprox/epoxy/index.mjs", [
           { wisp: WISP_URL }
         ]);
         statusEl.textContent = "Transport ready (Epoxy + Wisp)";
@@ -63,9 +63,9 @@
         const { ScramjetController } = $scramjetLoadController();
         scramjet = new ScramjetController({
           files: {
-            wasm: "/scramjet/scramjet.wasm.wasm",
-            all: "/scramjet/scramjet.all.js",
-            sync: "/scramjet/scramjet.sync.js", // include if the package has it
+            wasm: "/testprox/scramjet/scramjet.wasm.wasm",
+            all: "/testprox/scramjet/scramjet.all.js",
+            sync: "/testprox/scramjet/scramjet.sync.js", // include if the package has it
           },
           // optional: prefix, codec, flags, etc.
         });
