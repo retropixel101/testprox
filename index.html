@@ -46,7 +46,7 @@
         if (!("serviceWorker" in navigator)) {
           throw new Error("Service Workers not supported");
         }
-        await navigator.serviceWorker.register("/testprox/sw.js", { scope: "/" });
+        await navigator.serviceWorker.register("/testprox/sw.js")
         await navigator.serviceWorker.ready;
         statusEl.textContent = "SW ready";
 
