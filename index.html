@@ -6,14 +6,54 @@
   <title>Scramjet Proxy</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; background: #0f0f0f; color: #eee; }
-    header { padding: 12px 16px; background: #1a1a1a; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #333; }
-    #url { flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; font-size: 15px; }
-    button { padding: 10px 18px; border-radius: 8px; border: none; background: #3b82f6; color: white; cursor: pointer; font-weight: 600; }
+    body {
+      font-family: system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #0f0f0f;
+      color: #eee;
+    }
+    header {
+      padding: 12px 16px;
+      background: #1a1a1a;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    #url {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #111;
+      color: #fff;
+      font-size: 15px;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+    }
     button:hover { background: #2563eb; }
     #frame-container { flex: 1; position: relative; }
-    iframe { width: 100%; height: 100%; border: none; background: #fff; }
-    #status { font-size: 13px; color: #888; padding: 0 8px; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+    #status {
+      font-size: 13px;
+      color: #888;
+      padding: 0 8px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -24,17 +64,19 @@
   </header>
   <div id="frame-container"></div>
 
-  <!-- Load order matters: BareMux → transport → Scramjet -->
-  <script src="/testprox/baremux/index.js"></script> <!-- or the main BareMux browser build your package provides -->
+  <!-- 1. BareMux (creates global BareMux) -->
+  <script src="/testprox/baremux/index.js"></script>
+
+  <!-- 2. Scramjet -->
   <script src="/testprox/scramjet/scramjet.all.js"></script>
 
   <script>
-    const WISP_URL = "wss://wisp-backend-weyl.onrender.com"; // your server (trailing slash sometimes required)
+    const WISP_URL = "wss://wisp-backend-weyl.onrender.com";
 
-    const statusEl = document.getElementById("status");
-    const urlInput = document.getElementById("url");
-    const goBtn = document.getElementById("go");
-    const container = document.getElementById("frame-container");
+    const statusEl   = document.getElementById("status");
+    const urlInput   = document.getElementById("url");
+    const goBtn      = document.getElementById("go");
+    const container  = document.getElementById("frame-container");
 
     let scramjet;
     let connection;
@@ -42,11 +84,19 @@
 
     async function init() {
       try {
+        // Make sure BareMux actually loaded
+        if (typeof BareMux === "undefined") {
+          throw new Error("BareMux is not defined – check /testprox/baremux/index.js");
+        }
+
         // 1. Register service worker
         if (!("serviceWorker" in navigator)) {
-          throw new Error("Service Workers not supported");
+          throw new Error("Service Workers not supported in this browser");
         }
-        await navigator.serviceWorker.register("/testprox/sw.js")
+
+        await navigator.serviceWorker.register("/testprox/sw.js", {
+          scope: "/testprox/"
+        });
         await navigator.serviceWorker.ready;
         statusEl.textContent = "SW ready";
 
@@ -60,21 +110,24 @@
         statusEl.textContent = "Transport ready (Epoxy + Wisp)";
 
         // 4. Scramjet controller
+        if (typeof $scramjetLoadController !== "function") {
+          throw new Error("$scramjetLoadController is not defined – check scramjet.all.js");
+        }
+
         const { ScramjetController } = $scramjetLoadController();
         scramjet = new ScramjetController({
           files: {
             wasm: "/testprox/scramjet/scramjet.wasm.wasm",
-            all: "/testprox/scramjet/scramjet.all.js",
-            sync: "/testprox/scramjet/scramjet.sync.js", // include if the package has it
-          },
-          // optional: prefix, codec, flags, etc.
+            all:  "/testprox/scramjet/scramjet.all.js",
+            sync: "/testprox/scramjet/scramjet.sync.js"
+          }
         });
         await scramjet.init();
         statusEl.textContent = "Scramjet ready – type a URL and press Go";
 
         // 5. Create the frame once
         frame = scramjet.createFrame();
-        frame.frame.style.width = "100%";
+        frame.frame.style.width  = "100%";
         frame.frame.style.height = "100%";
         frame.frame.style.border = "none";
         container.appendChild(frame.frame);
@@ -107,7 +160,12 @@
       if (e.key === "Enter") navigate();
     });
 
-    init();
+    // Start after the page (and the two scripts above) have loaded
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
