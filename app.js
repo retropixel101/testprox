@@ -10,10 +10,10 @@ const SW_URL = BASE + "/sw.js";
 const { ScramjetController } = $scramjetLoadController();
 
 const scramjet = new ScramjetController({
-  prefix: BASE + "/scramjet/",
+  prefix: BASE + "/service/",          // ← was BASE + "/scramjet/"
   files: {
     wasm: BASE + "/scramjet/scramjet.wasm.wasm",
-    all: BASE + "/scramjet/scramjet.all.js",
+    all:  BASE + "/scramjet/scramjet.all.js",
     sync: BASE + "/scramjet/scramjet.sync.js",
   },
   flags: {
