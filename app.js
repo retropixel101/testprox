@@ -124,26 +124,36 @@ function toggleDevTools() {
 }
 
 function openAboutBlank() {
-  const raw = document.getElementById("url")?.value || "https://example.com";
-  const url = normalizeUrl(raw);
-  const encoded = scramjet.encodeUrl
-    ? scramjet.encodeUrl(url)
-    : location.origin + BASE + "/service/" + encodeURIComponent(url);
-
   const w = window.open("about:blank", "_blank");
   if (!w) {
     setStatus("Popup blocked — allow popups", true);
     return;
   }
 
+  // Full browser UI (your real app), not just the site
+  const appUrl = location.origin + BASE + "/";
+
   w.document.open();
-  w.document.write(
-    `<!DOCTYPE html><html><head><title> </title>
-<style>html,body,iframe{margin:0;padding:0;border:0;width:100%;height:100%;background:#111}</style>
-</head><body>
-<iframe src="${encoded}" allow="fullscreen"></iframe>
-</body></html>`
-  );
+  w.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title> </title>
+  <style>
+    html, body, iframe {
+      margin: 0; padding: 0; border: 0;
+      width: 100%; height: 100%;
+      background: #121212;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    src="${appUrl}"
+    allow="fullscreen; clipboard-read; clipboard-write"
+  ></iframe>
+</body>
+</html>`);
   w.document.close();
 }
 
