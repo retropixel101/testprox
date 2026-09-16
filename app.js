@@ -124,64 +124,26 @@ function toggleDevTools() {
 }
 
 function openAboutBlank() {
+  const raw = document.getElementById("url")?.value || "https://example.com";
+  const url = normalizeUrl(raw);
+  const encoded = scramjet.encodeUrl
+    ? scramjet.encodeUrl(url)
+    : location.origin + BASE + "/service/" + encodeURIComponent(url);
+
   const w = window.open("about:blank", "_blank");
   if (!w) {
     setStatus("Popup blocked — allow popups", true);
     return;
   }
 
-  // Clone current browser UI into about:blank so the address bar stays about:blank
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title> </title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #121212; color: #eee; font-family: system-ui, sans-serif; }
-    .wrap { display: flex; flex-direction: column; height: 100%; }
-    .bar {
-      display: flex; gap: 6px; align-items: center;
-      padding: 10px 12px; background: #1e1e1e; border-bottom: 1px solid #333;
-    }
-    .bar button {
-      background: #333; color: #fff; border: 0; border-radius: 6px;
-      padding: 8px 12px; cursor: pointer; white-space: nowrap;
-    }
-    .bar button:hover { background: #444; }
-    .bar input {
-      flex: 1; background: #121212; color: #fff; border: 1px solid #333;
-      border-radius: 6px; padding: 8px 10px; min-width: 0;
-    }
-    #status { font-size: 12px; color: #9aa; white-space: nowrap; }
-    #frame { flex: 1; min-height: 0; background: #fff; }
-    #frame iframe { width: 100%; height: 100%; border: 0; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="bar">
-      <button id="back" type="button">←</button>
-      <button id="fwd" type="button">→</button>
-      <button id="reload" type="button">↻</button>
-      <input id="url" type="text" value="${(
-        document.getElementById("url")?.value || "https://example.com"
-      ).replace(/"/g, "&quot;")}" spellcheck="false" />
-      <button id="go" type="button">Go</button>
-      <button id="devtools" type="button">DEV</button>
-      <span id="status">Loading…</span>
-    </div>
-    <div id="frame"></div>
-  </div>
-  <script src="${location.origin}/testprox/baremux/index.js"><\/script>
-  <script src="${location.origin}/testprox/scramjet/scramjet.all.js"><\/script>
-  <script src="${location.origin}/testprox/app.js"><\/script>
-</body>
-</html>`;
-
   w.document.open();
-  w.document.write(html);
+  w.document.write(
+    `<!DOCTYPE html><html><head><title> </title>
+<style>html,body,iframe{margin:0;padding:0;border:0;width:100%;height:100%;background:#111}</style>
+</head><body>
+<iframe src="${encoded}" allow="fullscreen"></iframe>
+</body></html>`
+  );
   w.document.close();
 }
 

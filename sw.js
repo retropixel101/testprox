@@ -23,46 +23,58 @@ function isStaticAsset(path) {
 }
 
 /**
- * If a site leaked the real origin, the path becomes:
- * /testprox/service/https%3A%2F%2Fretropixel101.github.io%2Ftestprox%2Fservice%2Fhttps%253A%252F%252Fplay...
- * Unwrap until we get a normal https URL.
+ * Only true double-proxy, e.g.:
+ * /service/https%3A%2F%2Fretropixel101.github.io%2Ftestprox%2Fservice%2Fhttps%253A%252F%252Fplay...
+ * NOT normal /service/https%3A%2F%2Fexample.com
  */
-function unwrapProxiedTarget(path) {
-  if (!path.startsWith(PROXY_PREFIX)) return null;
+function unwrapDoubleProxy(pathname) {
+  if (!pathname.startsWith(PROXY_PREFIX)) return null;
 
-  let rest = path.slice(PROXY_PREFIX.length);
+  let rest = pathname.slice(PROXY_PREFIX.length);
+  let decoded;
   try {
-    rest = decodeURIComponent(rest);
-  } catch {}
+    decoded = decodeURIComponent(rest);
+  } catch {
+    return null;
+  }
 
-  // Keep unwrapping while it points back at our own proxy
+  // Must still contain our origin + proxy prefix after one decode
+  const leakPrefix = ORIGIN + PROXY_PREFIX;
+  if (!decoded.startsWith(leakPrefix) && !decoded.startsWith(PROXY_PREFIX)) {
+    return null; // normal proxied URL — do nothing
+  }
+
+  // Strip outer leak layer(s)
   for (let i = 0; i < 5; i++) {
-    if (rest.startsWith(ORIGIN + PROXY_PREFIX)) {
-      rest = rest.slice((ORIGIN + PROXY_PREFIX).length);
-      try {
-        rest = decodeURIComponent(rest);
-      } catch {}
+    if (decoded.startsWith(leakPrefix)) {
+      decoded = decoded.slice(leakPrefix.length);
+      try { decoded = decodeURIComponent(decoded); } catch {}
       continue;
     }
-    if (rest.startsWith(PROXY_PREFIX)) {
-      rest = rest.slice(PROXY_PREFIX.length);
-      try {
-        rest = decodeURIComponent(rest);
-      } catch {}
+    if (decoded.startsWith(ORIGIN + "/")) {
+      // still our site but not necessarily proxy — stop
+      break;
+    }
+    if (decoded.startsWith(PROXY_PREFIX)) {
+      decoded = decoded.slice(PROXY_PREFIX.length);
+      try { decoded = decodeURIComponent(decoded); } catch {}
       continue;
     }
     break;
   }
 
-  if (rest.startsWith("http://") || rest.startsWith("https://")) {
-    return rest;
+  if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+    // Final sanity: must NOT still be our proxy
+    if (decoded.startsWith(leakPrefix) || decoded.includes(PROXY_PREFIX)) {
+      return null;
+    }
+    return decoded;
   }
   return null;
 }
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  const path = url.pathname + url.search + url.hash;
 
   if (isStaticAsset(url.pathname)) {
     event.respondWith(fetch(event.request));
@@ -72,16 +84,15 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       try {
-        const unwrapped = unwrapProxiedTarget(url.pathname + url.search);
+        const unwrapped = unwrapDoubleProxy(url.pathname);
         if (unwrapped) {
-          // Rebuild as a single, correct proxy request
           const clean =
-            ORIGIN +
-            PROXY_PREFIX +
-            encodeURIComponent(unwrapped) +
-            (url.hash || "");
-          console.warn("[SW] unwrapped double-proxy →", unwrapped);
-          return Response.redirect(clean, 302);
+            ORIGIN + PROXY_PREFIX + encodeURIComponent(unwrapped) + (url.hash || "");
+          // Only redirect if clean is actually different (avoid loops)
+          if (clean !== url.href && !url.href.includes(encodeURIComponent(unwrapped))) {
+            console.warn("[SW] unwrapped double-proxy →", unwrapped);
+            return Response.redirect(clean, 302);
+          }
         }
 
         await scramjet.loadConfig();
